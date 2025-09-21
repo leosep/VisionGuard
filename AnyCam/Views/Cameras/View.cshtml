@@ -1,0 +1,83 @@
+@model AnyCam.Models.Camera
+
+@{
+    ViewData["Title"] = "View Camera";
+}
+
+<h1>@Model.Name</h1>
+
+<div class="row">
+    <div class="col-md-12">
+        <video id="cameraStream" controls autoplay muted style="width: 100%; max-height: 600px;"
+               data-stream-url="@ViewBag.HlsUrl"
+               data-ip="@Model.IpAddress"
+               data-port="@Model.Port"
+               data-stream-url-full="@Model.StreamUrl">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-md-12">
+        <button id="playBtn" class="btn btn-primary">Play</button>
+        <button id="pauseBtn" class="btn btn-secondary">Pause</button>
+        <button id="fullscreenBtn" class="btn btn-info">Fullscreen</button>
+        <form asp-action="StartRecording" asp-route-id="@Model.Id" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-success">Start Recording (5 min)</button>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+    const video = document.getElementById('cameraStream');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+    // Construct stream URL
+    const streamUrl = '@ViewBag.HlsUrl' || (Model.StreamUrl || `http://${Model.IpAddress}:${Model.Port}/stream`); // Use HLS if available
+
+    function loadStream() {
+        const video = document.getElementById('cameraStream');
+        const hlsUrl = video.dataset.streamUrl;
+        const ip = video.dataset.ip;
+        const port = video.dataset.port;
+        const fullUrl = video.dataset.streamUrlFull;
+
+        const streamUrl = hlsUrl || fullUrl || `http://${ip}:${port}/stream`;
+
+        if (streamUrl.endsWith('.m3u8')) {
+            // HLS stream
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(streamUrl);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = streamUrl;
+            }
+        } else {
+            // Direct stream
+            video.src = streamUrl;
+        }
+    }
+
+    // Start loading with delay
+    setTimeout(loadStream, 5000);
+
+    playBtn.addEventListener('click', () => video.play());
+    pauseBtn.addEventListener('click', () => video.pause());
+    fullscreenBtn.addEventListener('click', () => {
+        if (video.requestFullscreen) {
+            video.requestFullscreen();
+        }
+    });
+</script>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>

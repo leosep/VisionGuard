@@ -1,0 +1,79 @@
+@model AnyCam.Models.VideoClip
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0"><i class="fas fa-plus"></i> Create Video Clip</h1>
+        <a asp-action="Index" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to List</a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-video"></i> New Video Clip Details
+                </div>
+                <div class="card-body">
+                    <form asp-action="Create">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="CameraId" class="form-label"><i class="fas fa-camera"></i> Camera</label>
+                                <select asp-for="CameraId" class="form-select" asp-items="ViewBag.CameraId">
+                                    <option value="">Select Camera</option>
+                                </select>
+                                <span asp-validation-for="CameraId" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="StorageType" class="form-label"><i class="fas fa-server"></i> Storage Type</label>
+                                <select asp-for="StorageType" class="form-select">
+                                    <option value="Local">Local</option>
+                                    <option value="AWS S3">AWS S3</option>
+                                </select>
+                                <span asp-validation-for="StorageType" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="StartTime" class="form-label"><i class="fas fa-clock"></i> Start Time</label>
+                                <input asp-for="StartTime" class="form-control" type="datetime-local" />
+                                <span asp-validation-for="StartTime" class="text-danger"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="EndTime" class="form-label"><i class="fas fa-clock"></i> End Time</label>
+                                <input asp-for="EndTime" class="form-control" type="datetime-local" />
+                                <span asp-validation-for="EndTime" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="FilePath" class="form-label"><i class="fas fa-file"></i> File Path</label>
+                            <input asp-for="FilePath" class="form-control" placeholder="e.g., /videos/clip1.mp4" />
+                            <span asp-validation-for="FilePath" class="text-danger"></span>
+                            <div class="form-text">Path to the stored video file.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="FileSize" class="form-label"><i class="fas fa-weight"></i> File Size (bytes)</label>
+                            <input asp-for="FileSize" class="form-control" type="number" />
+                            <span asp-validation-for="FileSize" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg"><i class="fas fa-save"></i> Create Clip</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

@@ -1,0 +1,62 @@
+@model IEnumerable<AnyCam.Models.Camera>
+
+@{
+    ViewData["Title"] = "Cameras";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0"><i class="fas fa-camera"></i> Cameras</h1>
+        <a asp-action="Create" class="btn btn-primary"><i class="fas fa-plus"></i> Add Camera</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-list"></i> Camera List
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th><i class="fas fa-tag"></i> Name</th>
+                            <th><i class="fas fa-globe"></i> IP Address</th>
+                            <th><i class="fas fa-plug"></i> Port</th>
+                            <th><i class="fas fa-network-wired"></i> Protocol</th>
+                            <th><i class="fas fa-signal"></i> Status</th>
+                            <th><i class="fas fa-cogs"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model) {
+                        <tr>
+                            <td>@Html.DisplayFor(modelItem => item.Name)</td>
+                            <td>@Html.DisplayFor(modelItem => item.IpAddress)</td>
+                            <td>@Html.DisplayFor(modelItem => item.Port)</td>
+                            <td><span class="badge bg-secondary">@Html.DisplayFor(modelItem => item.Protocol)</span></td>
+                            <td>
+                                @if (item.IsOnline)
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-circle"></i> Online</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger"><i class="fas fa-circle"></i> Offline</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a asp-action="View" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit"></i></a>
+                                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info"><i class="fas fa-info-circle"></i></a>
+                                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

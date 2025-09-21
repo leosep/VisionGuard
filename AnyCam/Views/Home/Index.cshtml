@@ -1,0 +1,88 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3 bg-light p-3">
+            <h5>Navigation</h5>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" asp-controller="Cameras" asp-action="Index">Cameras</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" asp-controller="Cameras" asp-action="Wall">Video Wall</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" asp-controller="VideoClips" asp-action="Index">Video Clips</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" asp-controller="Home" asp-action="Privacy">Settings</a>
+                </li>
+            </ul>
+        </div>
+        <div class="col-md-9">
+            <h1 class="display-4">VisionGuard Dashboard</h1>
+            <p class="lead">Welcome to the Enterprise IP Camera Management System.</p>
+
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <i class="fas fa-camera"></i> Cameras
+                        </div>
+                        <div class="card-body">
+                            <p>Manage and monitor your IP cameras with real-time status.</p>
+                            <a asp-controller="Cameras" asp-action="Index" class="btn btn-primary">Manage Cameras</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-success text-white">
+                            <i class="fas fa-th"></i> Video Wall
+                        </div>
+                        <div class="card-body">
+                            <p>View multiple camera streams simultaneously in a grid layout.</p>
+                            <a asp-controller="Cameras" asp-action="Wall" class="btn btn-success">Open Video Wall</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-info text-white">
+                            <i class="fas fa-video"></i> Video Clips
+                        </div>
+                        <div class="card-body">
+                            <p>Browse and manage recorded video clips with AI indexing.</p>
+                            <a asp-controller="VideoClips" asp-action="Index" class="btn btn-info">View Clips</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="fas fa-brain"></i> AI Features
+                        </div>
+                        <div class="card-body">
+                            <p>Leverage AI for object detection, facial recognition, and anomaly alerts.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-danger text-white">
+                            <i class="fas fa-shield-alt"></i> Security
+                        </div>
+                        <div class="card-body">
+                            <p>Secure access with role-based permissions and data encryption.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
