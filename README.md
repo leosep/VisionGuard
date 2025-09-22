@@ -23,7 +23,7 @@ VisionGuard is a comprehensive AI-ready web application for managing IP cameras,
 ## Prerequisites
 
 - **.NET 8 SDK**
-- **FFmpeg** (for video processing and streaming)
+- **Emgu.CV** (OpenCV wrapper for .NET, for video processing and streaming)
 - **SQLite** (included with EF Core)
 - **OpenAI API Key** (for AI features)
 
@@ -90,7 +90,7 @@ VisionGuard is a comprehensive AI-ready web application for managing IP cameras,
 - **Database**: SQLite
 - **Frontend**: Razor Views, Bootstrap, JavaScript
 - **AI**: OpenAI Vision API
-- **Video**: FFmpeg for processing/streaming
+- **Video**: Emgu.CV (OpenCV) for processing/streaming
 
 ### Key Components
 - **Models**: Camera, VideoClip, AiEvent, LogEntry
@@ -168,7 +168,6 @@ MIT License - see LICENSE file for details.
 For issues or questions:
 - Open GitHub issue
 - Check logs in `logs/` directory
-- Ensure FFmpeg is installed and accessible
 
 ---
 
