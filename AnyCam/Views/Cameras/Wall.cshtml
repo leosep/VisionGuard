@@ -44,12 +44,23 @@
                 const hls = new Hls();
                 hls.loadSource(streamUrl);
                 hls.attachMedia(video);
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS error for camera ' + id + ':', data);
+                });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = streamUrl;
             }
+        } else if (streamUrl.startsWith('rtsp://')) {
+            // Can't play RTSP directly
+            console.warn('RTSP stream cannot be played directly in browser for camera ' + id);
         } else {
             video.src = streamUrl;
         }
+    });
+
+    // Stop all streams when page is unloaded
+    window.addEventListener('beforeunload', () => {
+        navigator.sendBeacon('/Cameras/StopAllStreams');
     });
 </script>
 </div>

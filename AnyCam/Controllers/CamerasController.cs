@@ -32,7 +32,16 @@ namespace AnyCam.Controllers
         // GET: Cameras
         public async Task<IActionResult> Index()
         {
-            return View(await _context.Cameras.ToListAsync());
+            var cameras = await _context.Cameras.ToListAsync();
+            // Update online status for all cameras
+            foreach (var camera in cameras)
+            {
+                camera.IsOnline = await _cameraService.CheckOnlineAsync(camera);
+                camera.LastChecked = DateTime.UtcNow;
+            }
+            _context.UpdateRange(cameras);
+            await _context.SaveChangesAsync();
+            return View(cameras);
         }
 
         // GET: Cameras/Details/5
@@ -74,19 +83,19 @@ namespace AnyCam.Controllers
             {
                 var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "streams", id.ToString());
                 Directory.CreateDirectory(outputPath);
-                _streamingService.StartHlsStream(camera.StreamUrl, outputPath);
+                _streamingService.StartHlsStream(camera.StreamUrl, outputPath, camera.Id);
                 ViewBag.HlsUrl = $"/streams/{id}/playlist.m3u8";
-                // Wait a bit for FFmpeg to start
-                await Task.Delay(5000);
+                // Wait longer for FFmpeg to start and create playlist
+                await Task.Delay(15000);
                 var playlistPath = Path.Combine(outputPath, "playlist.m3u8");
                 if (System.IO.File.Exists(playlistPath))
                 {
-                    // Log success
                     Console.WriteLine("Playlist created successfully");
                 }
                 else
                 {
                     Console.WriteLine("Playlist not found");
+                    TempData["Error"] = "Failed to start stream. Camera may be offline.";
                 }
             }
 
@@ -102,9 +111,27 @@ namespace AnyCam.Controllers
             {
                 var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "streams", camera.Id.ToString());
                 Directory.CreateDirectory(outputPath);
-                _streamingService.StartHlsStream(camera.StreamUrl, outputPath);
+                _streamingService.StartHlsStream(camera.StreamUrl, outputPath, camera.Id);
             }
+            // Wait for streams to start
+            await Task.Delay(10000);
             return View(cameras);
+        }
+
+        // POST: Cameras/StopStreaming/5
+        [HttpPost]
+        public IActionResult StopStreaming(int id)
+        {
+            _streamingService.StopHlsStream(id);
+            return Ok();
+        }
+
+        // POST: Cameras/StopAllStreams
+        [HttpPost]
+        public IActionResult StopAllStreams()
+        {
+            _streamingService.StopAllStreams();
+            return Ok();
         }
 
         // GET: Cameras/Create

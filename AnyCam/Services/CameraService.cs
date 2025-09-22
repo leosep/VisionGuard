@@ -1,4 +1,5 @@
 using AnyCam.Models;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Net;
 
@@ -81,29 +82,30 @@ namespace AnyCam.Services
         {
             try
             {
-                using (var client = new TcpClient())
+                // Use ffmpeg to check if RTSP stream is accessible
+                var process = new Process
                 {
-                    // Try connect with a short timeout
-                    var result = client.BeginConnect(host, port, null, null);
-                    bool success = result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(3));
-
-                    if (!success) return false;
-                    client.EndConnect(result);
-
-                    // Send an OPTIONS request to validate RTSP
-                    using (var stream = client.GetStream())
+                    StartInfo = new ProcessStartInfo
                     {
-                        string request = $"OPTIONS {url} RTSP/1.0\r\nCSeq: 1\r\n\r\n";
-                        byte[] data = System.Text.Encoding.ASCII.GetBytes(request);
-                        stream.Write(data, 0, data.Length);
-
-                        byte[] buffer = new byte[1024];
-                        int read = stream.Read(buffer, 0, buffer.Length);
-                        string response = System.Text.Encoding.ASCII.GetString(buffer, 0, read);
-
-                        return response.Contains("RTSP");
+                        FileName = "ffmpeg",
+                        Arguments = $"-rtsp_transport tcp -i \"{url}\" -t 5 -f null -",
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
                     }
+                };
+
+                process.Start();
+                bool exited = process.WaitForExit(10000); // 10 second timeout
+
+                if (!exited)
+                {
+                    process.Kill();
+                    return false;
                 }
+
+                return process.ExitCode == 0;
             }
             catch
             {

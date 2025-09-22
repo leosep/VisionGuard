@@ -18,14 +18,22 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.Sign
 
 builder.Services.AddHostedService<AiProcessingService>();
 builder.Services.AddHostedService<ScheduledRecordingService>();
+builder.Services.AddHostedService<StreamCleanupService>();
 
 builder.Services.AddDataProtection(); // For GDPR compliance and encryption
 
 builder.Services.AddScoped<AnyCam.Services.CameraService>();
 builder.Services.AddScoped<AnyCam.Services.AiService>();
-builder.Services.AddScoped<AnyCam.Services.StreamingService>();
+builder.Services.AddSingleton<AnyCam.Services.StreamingService>();
 
 var app = builder.Build();
+
+// Register shutdown handler to stop all streams
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    var streamingService = app.Services.GetRequiredService<StreamingService>();
+    streamingService.StopAllStreams();
+});
 
 // Seed roles and admin user
 using (var scope = app.Services.CreateScope())
@@ -58,6 +66,22 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Middleware to track stream access
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/streams"))
+    {
+        var path = context.Request.Path.Value;
+        var parts = path.Split('/');
+        if (parts.Length >= 3 && int.TryParse(parts[2], out int cameraId))
+        {
+            var streamingService = context.RequestServices.GetRequiredService<StreamingService>();
+            streamingService.UpdateLastAccessed(cameraId);
+        }
+    }
+    await next();
+});
 
 app.UseRouting();
 

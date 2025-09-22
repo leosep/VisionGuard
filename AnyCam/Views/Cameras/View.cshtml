@@ -36,9 +36,6 @@
     const pauseBtn = document.getElementById('pauseBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
 
-    // Construct stream URL
-    const streamUrl = '@ViewBag.HlsUrl' || (Model.StreamUrl || `http://${Model.IpAddress}:${Model.Port}/stream`); // Use HLS if available
-
     function loadStream() {
         const video = document.getElementById('cameraStream');
         const hlsUrl = video.dataset.streamUrl;
@@ -57,9 +54,15 @@
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
                     video.play();
                 });
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    console.error('HLS error:', data);
+                });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = streamUrl;
             }
+        } else if (streamUrl.startsWith('rtsp://')) {
+            // Can't play RTSP directly
+            console.warn('RTSP stream cannot be played directly in browser');
         } else {
             // Direct stream
             video.src = streamUrl;
@@ -67,7 +70,7 @@
     }
 
     // Start loading with delay
-    setTimeout(loadStream, 5000);
+    setTimeout(loadStream, 15000);
 
     playBtn.addEventListener('click', () => video.play());
     pauseBtn.addEventListener('click', () => video.pause());
@@ -75,6 +78,11 @@
         if (video.requestFullscreen) {
             video.requestFullscreen();
         }
+    });
+
+    // Stop stream when page is unloaded
+    window.addEventListener('beforeunload', () => {
+        navigator.sendBeacon('/Cameras/StopStreaming/@Model.Id');
     });
 </script>
 
