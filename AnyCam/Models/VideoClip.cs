@@ -21,6 +21,7 @@ namespace AnyCam.Models
         [Required]
         public DateTime StartTime { get; set; }
 
+        [Required]
         public DateTime EndTime { get; set; }
 
         public string? FilePath { get; set; } // Local or cloud path

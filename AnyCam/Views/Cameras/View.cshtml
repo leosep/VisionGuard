@@ -4,55 +4,180 @@
     ViewData["Title"] = "View Camera";
 }
 
-<h1>@Model.Name</h1>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h2">
+                    <i class="fas fa-video-camera"></i> @Model.Name
+                </h1>
+                <div class="btn-group">
+                    <a asp-action="Index" asp-controller="Cameras" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Cameras
+                    </a>
+                    <button id="fullscreenBtn" class="btn btn-primary">
+                        <i class="fas fa-expand"></i> Fullscreen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="row">
-    <div class="col-md-12">
-        <img id="cameraStream" style="width: 100%; max-height: 600px;"
-             data-stream-url="@ViewBag.StreamUrl"
-             data-ip="@Model.IpAddress"
-             data-port="@Model.Port"
-             data-stream-url-full="@Model.StreamUrl">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-video-camera"></i> Live Feed
+                    </h6>
+                    <div class="btn-group btn-group-sm">
+                        <button id="startStreamBtn" class="btn btn-success btn-sm">
+                            <i class="fas fa-play"></i> Start Stream
+                        </button>
+                        <button id="stopStreamBtn" class="btn btn-danger btn-sm">
+                            <i class="fas fa-stop"></i> Stop Stream
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="video-container" style="height: 600px; background: #000;">
+                        <img id="stream-@Model.Id" class="w-100 h-100" style="display: none; object-fit: contain;"
+                             alt="Live camera feed" />
+                        <div class="video-placeholder d-flex align-items-center justify-content-center h-100 text-white">
+                            <div class="text-center">
+                                <i class="fas fa-video-camera display-4 mb-2"></i>
+                                <p>Click start stream to begin</p>
+                                <small class="text-muted">@Model.Location</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="small text-muted">Status</div>
+                            <span class="badge bg-secondary" id="status-@Model.Id">Stopped</span>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">Detections</div>
+                            <span id="detections-@Model.Id">-</span>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">Alerts</div>
+                            <span id="alerts-@Model.Id">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Camera Details</h6>
+                            <p><strong>Name:</strong> @Model.Name</p>
+                            <p><strong>Location:</strong> @Model.Location</p>
+                            <p><strong>Stream URL:</strong> @Model.StreamUrl</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Actions</h6>
+                            <form asp-action="StartRecording" asp-route-id="@Model.Id" method="post" style="display: inline;">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-record-vinyl"></i> Start Recording (5 min)
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="row mt-3">
-    <div class="col-md-12">
-        <button id="playBtn" class="btn btn-primary">Play</button>
-        <button id="pauseBtn" class="btn btn-secondary">Pause</button>
-        <button id="fullscreenBtn" class="btn btn-info">Fullscreen</button>
-        <form asp-action="StartRecording" asp-route-id="@Model.Id" method="post" style="display: inline;">
-            <button type="submit" class="btn btn-success">Start Recording (5 min)</button>
-        </form>
-    </div>
-</div>
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const streamImg = document.getElementById('stream-@Model.Id');
+            const placeholder = streamImg.parentElement.querySelector('.video-placeholder');
+            const status = document.getElementById('status-@Model.Id');
+            const startBtn = document.getElementById('startStreamBtn');
+            const stopBtn = document.getElementById('stopStreamBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
 
-<script>
-    const img = document.getElementById('cameraStream');
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
+            startBtn.addEventListener('click', function() {
+                startStream();
+            });
 
-    function loadStream() {
-        const streamUrl = img.dataset.streamUrl;
-        if (streamUrl) {
-            img.src = streamUrl;
-        }
-    }
+            stopBtn.addEventListener('click', function() {
+                stopStream();
+            });
 
-    // Start loading immediately
-    loadStream();
+            fullscreenBtn.addEventListener('click', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    this.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+                } else {
+                    document.exitFullscreen();
+                    this.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+                }
+            });
 
-    fullscreenBtn.addEventListener('click', () => {
-        if (img.requestFullscreen) {
-            img.requestFullscreen();
-        }
-    });
+            function startStream() {
+                status.className = 'badge bg-warning';
+                status.textContent = 'Connecting...';
 
-    // Stop stream when page is unloaded
-    window.addEventListener('beforeunload', () => {
-        navigator.sendBeacon('/Cameras/StopStreaming/@Model.Id');
-    });
-</script>
+                // Use multipart streaming for better performance
+                streamImg.src = `/Cameras/Stream/@Model.Id`;
+                streamImg.style.display = 'block';
+                placeholder.style.display = 'none';
+                status.className = 'badge bg-success';
+                status.textContent = 'Live';
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+                loadCameraStats();
+
+                // Auto-refresh stats
+                setInterval(() => {
+                    if (status.textContent === 'Live') {
+                        loadCameraStats();
+                    }
+                }, 30000);
+            }
+
+            function stopStream() {
+                fetch('/Cameras/StopStreaming/@Model.Id', { method: 'POST' })
+                    .then(() => {
+                        streamImg.style.display = 'none';
+                        streamImg.src = '';
+                        placeholder.style.display = 'flex';
+                        status.className = 'badge bg-secondary';
+                        status.textContent = 'Stopped';
+                    })
+                    .catch(error => {
+                        console.error('Error stopping stream:', error);
+                        streamImg.style.display = 'none';
+                        streamImg.src = '';
+                        placeholder.style.display = 'flex';
+                        status.className = 'badge bg-secondary';
+                        status.textContent = 'Stopped';
+                    });
+            }
+
+            function loadCameraStats() {
+                fetch('/api/v1/Cameras/@Model.Id/stats')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('detections-@Model.Id').textContent = data.detectionCount || 0;
+                        document.getElementById('alerts-@Model.Id').textContent = data.alertCount || 0;
+                    })
+                    .catch(error => {
+                        console.error('Error loading camera stats:', error);
+                    });
+            }
+
+        });
+    </script>
+}

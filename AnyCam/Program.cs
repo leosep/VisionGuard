@@ -19,6 +19,7 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options => options.Sign
 builder.Services.AddHostedService<AiProcessingService>();
 builder.Services.AddHostedService<ScheduledRecordingService>();
 builder.Services.AddHostedService<StreamCleanupService>();
+builder.Services.AddHostedService<CameraStatusService>();
 
 builder.Services.AddDataProtection(); // For GDPR compliance and encryption
 

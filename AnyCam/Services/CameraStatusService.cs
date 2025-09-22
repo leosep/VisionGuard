@@ -9,15 +9,18 @@ namespace AnyCam.Services
     {
         private readonly IServiceProvider _serviceProvider;
 
-        public CameraStatusService(IServiceProvider serviceProvider)
+        private readonly ILogger<CameraStatusService> _logger;
+
+        public CameraStatusService(IServiceProvider serviceProvider, ILogger<CameraStatusService> logger)
         {
             _serviceProvider = serviceProvider;
-            Console.WriteLine("CameraStatusService constructor called");
+            _logger = logger;
+            _logger.LogInformation("CameraStatusService constructor called");
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            Console.WriteLine("CameraStatusService starting");
+            _logger.LogInformation("CameraStatusService starting");
             while (!stoppingToken.IsCancellationRequested)
             {
                 using (var scope = _serviceProvider.CreateScope())
@@ -26,16 +29,18 @@ namespace AnyCam.Services
                     var cameraService = scope.ServiceProvider.GetRequiredService<CameraService>();
                     var cameras = await context.Cameras.ToListAsync();
 
-                    foreach (var camera in cameras)
+                    var tasks = cameras.Select(async camera =>
                     {
                         camera.IsOnline = await cameraService.CheckOnlineAsync(camera);
                         camera.LastChecked = DateTime.UtcNow;
-                    }
+                    });
+
+                    await Task.WhenAll(tasks);
 
                     await context.SaveChangesAsync();
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken); // Check every 1 minute
+                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken); // Check every 5 minutes
             }
         }
     }

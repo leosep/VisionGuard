@@ -54,9 +54,9 @@ namespace AnyCam.Services
                     }
 
                     using var frame = new Mat();
-                    // Try to read a frame within 10 seconds
+                    // Try to read a frame within 3 seconds
                     var task = Task.Run(() => capture.Read(frame));
-                    if (await Task.WhenAny(task, Task.Delay(10000)) == task)
+                    if (await Task.WhenAny(task, Task.Delay(3000)) == task)
                     {
                         return !frame.IsEmpty;
                     }
@@ -67,14 +67,7 @@ namespace AnyCam.Services
                 }
                 else
                 {
-                    // Fallback to TCP check
-                    string host = camera.IpAddress;
-                    int port = camera.Port;
-
-                    Console.WriteLine($"Checking TCP online for {camera.Name}: {host}:{port}");
-                    var result = await IsPortOpenAsync(host, port);
-                    Console.WriteLine($"Result for {camera.Name}: {result}");
-                    return result;
+                    return false;
                 }
             }
             catch (Exception ex)

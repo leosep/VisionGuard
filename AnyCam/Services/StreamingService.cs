@@ -53,6 +53,8 @@ namespace AnyCam.Services
                     return frame;
                 }
             }
+            // If not running, try to open temporarily (inefficient, but fallback)
+            // For performance, should start stream first
             return null;
         }
 

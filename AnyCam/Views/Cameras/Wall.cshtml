@@ -1,47 +1,329 @@
-@model IEnumerable<AnyCam.Models.Camera>
+@model AnyCam.Models.WallViewModel
 
 @{
-    ViewData["Title"] = "Video Wall";
+    ViewData["Title"] = "Camera Wall";
 }
 
-<h1>Video Wall</h1>
-
 <div class="container-fluid">
-    <div class="row">
-        @foreach (var camera in Model)
-        {
-            <div class="col-md-3 mb-3">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h2">
+                    <i class="fas fa-th-large"></i> Camera Wall
+                </h1>
+                <div class="btn-group">
+                    <a asp-action="Index" asp-controller="Cameras" class="btn btn-secondary">
+                        <i class="fas fa-cog"></i> Manage Cameras
+                    </a>
+                    <button id="fullscreenBtn" class="btn btn-primary">
+                        <i class="fas fa-expand"></i> Fullscreen
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @{
+        var requestedCameraId = ViewContext.HttpContext.Request.Query["cameraId"].ToString();
+        var hasRequestedCamera = !string.IsNullOrEmpty(requestedCameraId) && Model.Cameras.Any(c => c.Id.ToString() == requestedCameraId);
+    }
+
+    @if (!Model.Cameras.Any())
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="alert alert-warning text-center">
+                    <h4 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle"></i> No Active Cameras
+                    </h4>
+                    <p>No cameras are currently active or configured with RTSP streams.</p>
+                    @if (!string.IsNullOrEmpty(requestedCameraId))
+                    {
+                        <p class="text-muted small">Camera ID requested: @requestedCameraId</p>
+                        <p class="text-muted small">Make sure the camera exists, is active, and has a valid RTSP URL.</p>
+                    }
+                    <a asp-action="Index" asp-controller="Cameras" class="btn btn-primary">
+                        Configure Cameras
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(requestedCameraId) && !hasRequestedCamera)
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="alert alert-warning text-center">
+                    <h4 class="alert-heading">
+                        <i class="fas fa-exclamation-triangle"></i> Camera Not Available
+                    </h4>
+                    <p>The requested camera (ID: @requestedCameraId) is not available.</p>
+                    <p class="text-muted small">It may not exist, not be active, or not have a valid RTSP URL.</p>
+                    <a asp-action="Index" asp-controller="Cameras" class="btn btn-primary">
+                        Manage Cameras
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Camera Grid Controls -->
+        <div class="row mb-3">
+            <div class="col-12">
                 <div class="card">
-                    <div class="card-header">
-                        @camera.Name
-                    </div>
                     <div class="card-body">
-                        <img id="img-@camera.Id" class="w-100"
-                             data-id="@camera.Id"
-                             data-stream-url="/Cameras/Stream/@camera.Id"
-                             data-ip="@camera.IpAddress"
-                             data-port="@camera.Port">
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                                <label for="gridLayout" class="form-label">Grid Layout</label>
+                                <select id="gridLayout" class="form-select">
+                                    <option value="1x1">1x1 (Single)</option>
+                                    <option value="2x2" selected>2x2 (Quad)</option>
+                                    <option value="3x3">3x3 (Nine)</option>
+                                    <option value="4x4">4x4 (Sixteen)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="cameraFilter" class="form-label">Filter Cameras</label>
+                                <select id="cameraFilter" class="form-select">
+                                    <option value="all">All Cameras</option>
+                                    @foreach (var camera in Model.Cameras)
+                                    {
+                                        <option value="@camera.Id">@camera.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="d-flex gap-2 mt-4">
+                                    <button id="startAllBtn" class="btn btn-success">
+                                        <i class="fas fa-play-circle"></i> Start All
+                                    </button>
+                                    <button id="stopAllBtn" class="btn btn-danger">
+                                        <i class="fas fa-stop-circle"></i> Stop All
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        }
-    </div>
+        </div>
 
-<script>
-    document.querySelectorAll('img[id^="img-"]').forEach(img => {
-        const streamUrl = img.dataset.streamUrl;
-        if (streamUrl) {
-            img.src = streamUrl;
-        }
-    });
+        <!-- Camera Grid -->
+        <div class="row" id="cameraGrid">
+            @for (int i = 0; i < Math.Min(Model.Cameras.Count, 4); i++)
+            {
+                var camera = Model.Cameras[i];
+                <div class="col-lg-6 col-xl-6 mb-3 camera-cell" data-camera-id="@camera.Id">
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-video-camera"></i> @camera.Name
+                            </h6>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-success btn-sm start-stream" data-camera-id="@camera.Id">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button class="btn btn-danger btn-sm stop-stream" data-camera-id="@camera.Id">
+                                    <i class="fas fa-stop"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="video-container" style="height: 300px; background: #000;">
+                                <img id="stream-@camera.Id" class="w-100 h-100" style="display: none; object-fit: contain;"
+                                     alt="Live camera feed" />
+                                <div class="video-placeholder d-flex align-items-center justify-content-center h-100 text-white">
+                                    <div class="text-center">
+                                        <i class="fas fa-video-camera display-4 mb-2"></i>
+                                        <p>Click play to start stream</p>
+                                        <small class="text-muted">@camera.Location</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <div class="small text-muted">Status</div>
+                                    <span class="badge bg-secondary" id="status-@camera.Id">Stopped</span>
+                                </div>
+                                <div class="col-4">
+                                    <div class="small text-muted">Detections</div>
+                                    <span id="detections-@camera.Id">-</span>
+                                </div>
+                                <div class="col-4">
+                                    <div class="small text-muted">Alerts</div>
+                                    <span id="alerts-@camera.Id">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
 
-    // Stop all streams when page is unloaded
-    window.addEventListener('beforeunload', () => {
-        navigator.sendBeacon('/Cameras/StopAllStreams');
-    });
-</script>
+        @if (Model.Cameras.Count > 4)
+        {
+            <div class="row">
+                <div class="col-12 text-center">
+                    <p class="text-muted">
+                        Showing 4 of @Model.Cameras.Count cameras. Use filters to view others.
+                    </p>
+                </div>
+            </div>
+        }
+    }
 </div>
 
-<div>
-    <a asp-action="Index">Back to List</a>
-</div>
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cameraGrid = document.getElementById('cameraGrid');
+            const gridLayout = document.getElementById('gridLayout');
+            const cameraFilter = document.getElementById('cameraFilter');
+            const startAllBtn = document.getElementById('startAllBtn');
+            const stopAllBtn = document.getElementById('stopAllBtn');
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+            // Grid layout change
+            gridLayout.addEventListener('change', function() {
+                updateGridLayout(this.value);
+            });
+
+            // Camera filter change
+            cameraFilter.addEventListener('change', function() {
+                filterCameras(this.value);
+            });
+
+            // Start all streams
+            startAllBtn.addEventListener('click', function() {
+                document.querySelectorAll('.start-stream').forEach(btn => btn.click());
+            });
+
+            // Stop all streams
+            stopAllBtn.addEventListener('click', function() {
+                document.querySelectorAll('.stop-stream').forEach(btn => btn.click());
+            });
+
+            // Fullscreen toggle
+            fullscreenBtn.addEventListener('click', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                    this.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+                } else {
+                    document.exitFullscreen();
+                    this.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+                }
+            });
+
+            // Individual stream controls
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('start-stream') || e.target.closest('.start-stream')) {
+                    const btn = e.target.classList.contains('start-stream') ? e.target : e.target.closest('.start-stream');
+                    const cameraId = btn.dataset.cameraId;
+                    startStream(cameraId);
+                }
+
+                if (e.target.classList.contains('stop-stream') || e.target.closest('.stop-stream')) {
+                    const btn = e.target.classList.contains('stop-stream') ? e.target : e.target.closest('.stop-stream');
+                    const cameraId = btn.dataset.cameraId;
+                    stopStream(cameraId);
+                }
+            });
+
+            function updateGridLayout(layout) {
+                const [rows, cols] = layout.split('x').map(Number);
+                const cells = document.querySelectorAll('.camera-cell');
+
+                cells.forEach((cell, index) => {
+                    if (index < rows * cols) {
+                        cell.style.display = '';
+                        cell.className = `col-lg-${12/cols} col-xl-${12/cols} mb-3 camera-cell`;
+                    } else {
+                        cell.style.display = 'none';
+                    }
+                });
+            }
+
+            function filterCameras(filter) {
+                const cells = document.querySelectorAll('.camera-cell');
+
+                cells.forEach(cell => {
+                    if (filter === 'all' || cell.dataset.cameraId === filter) {
+                        cell.style.display = '';
+                    } else {
+                        cell.style.display = 'none';
+                    }
+                });
+            }
+
+            function startStream(cameraId) {
+                const streamImg = document.getElementById(`stream-${cameraId}`);
+                const placeholder = streamImg.parentElement.querySelector('.video-placeholder');
+                const status = document.getElementById(`status-${cameraId}`);
+
+                status.className = 'badge bg-warning';
+                status.textContent = 'Connecting...';
+
+                // Use multipart streaming for better performance
+                streamImg.src = `/Cameras/Stream/${cameraId}`;
+                streamImg.style.display = 'block';
+                placeholder.style.display = 'none';
+                status.className = 'badge bg-success';
+                status.textContent = 'Live';
+
+                // Load camera statistics
+                loadCameraStats(cameraId);
+            }
+
+            function stopStream(cameraId) {
+                const streamImg = document.getElementById(`stream-${cameraId}`);
+                const placeholder = streamImg.parentElement.querySelector('.video-placeholder');
+                const status = document.getElementById(`status-${cameraId}`);
+
+                // Stop the stream
+                fetch(`/Cameras/StopStreaming/${cameraId}`, { method: 'POST' })
+                    .then(() => {
+                        streamImg.style.display = 'none';
+                        streamImg.src = ''; // Clear the image
+                        placeholder.style.display = 'flex';
+                        status.className = 'badge bg-secondary';
+                        status.textContent = 'Stopped';
+                    })
+                    .catch(error => {
+                        console.error('Error stopping stream:', error);
+                        // Still update UI
+                        streamImg.style.display = 'none';
+                        streamImg.src = '';
+                        placeholder.style.display = 'flex';
+                        status.className = 'badge bg-secondary';
+                        status.textContent = 'Stopped';
+                    });
+            }
+
+            function loadCameraStats(cameraId) {
+                fetch(`/api/v1/Cameras/${cameraId}/stats`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById(`detections-${cameraId}`).textContent = data.detectionCount || 0;
+                        document.getElementById(`alerts-${cameraId}`).textContent = data.alertCount || 0;
+                    })
+                    .catch(error => {
+                        console.error('Error loading camera stats:', error);
+                    });
+            }
+
+            // Auto-refresh stats every 30 seconds
+            setInterval(() => {
+                document.querySelectorAll('.camera-cell').forEach(cell => {
+                    const cameraId = cell.dataset.cameraId;
+                    const status = document.getElementById(`status-${cameraId}`);
+                    if (status.textContent === 'Live') {
+                        loadCameraStats(cameraId);
+                    }
+                });
+            }, 30000);
+        });
+    </script>
+}

@@ -26,7 +26,17 @@ namespace AnyCam.Services
 
             var response = await client.CompleteChatAsync(messages);
 
-            return response.Value.Content[0].Text;
+            var jsonText = response.Value.Content[0].Text;
+            // Try to parse as JSON, if not, return as is
+            try
+            {
+                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonText);
+                return jsonText; // Return JSON string
+            }
+            catch
+            {
+                return jsonText; // Return plain text
+            }
         }
 
         public async Task<bool> IsAnomalyAsync(byte[] imageBytes)
@@ -61,14 +71,22 @@ namespace AnyCam.Services
 
             var messages = new List<ChatMessage>
             {
-                new UserChatMessage($"Given the query: '{query}', find matching video indices from descriptions: {string.Join("; ", videoDescriptions)}")
+                new UserChatMessage($"Given the query: '{query}', find matching video indices from descriptions: {string.Join("; ", videoDescriptions.Select((desc, i) => $"{i}: {desc}"))}. Return a JSON array of matching indices.")
             };
 
             var response = await client.CompleteChatAsync(messages);
 
-            // Parse response to get indices
-            // For simplicity, return all for now
-            return Enumerable.Range(0, videoDescriptions.Count).ToList();
+            var text = response.Value.Content[0].Text;
+            try
+            {
+                var indices = JsonSerializer.Deserialize<List<int>>(text);
+                return indices ?? new List<int>();
+            }
+            catch
+            {
+                // Fallback: return all
+                return Enumerable.Range(0, videoDescriptions.Count).ToList();
+            }
         }
     }
 }

@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using AnyCam.Models;
 using Microsoft.EntityFrameworkCore;
+using Emgu.CV;
+using Emgu.CV.Structure;
 
 namespace AnyCam.Services
 {
@@ -48,7 +50,7 @@ namespace AnyCam.Services
                                     // Create AI event
                                     var aiEvent = new AiEvent
                                     {
-                                        VideoClipId = 0, // For live, perhaps create a temp clip or use null
+                                        VideoClipId = null, // For live events, no associated clip
                                         EventType = "Anomaly Detected",
                                         Description = analysis,
                                         Timestamp = DateTime.UtcNow,
@@ -78,11 +80,33 @@ namespace AnyCam.Services
 
         private async Task<byte[]> CaptureFrameAsync(string rtspUrl)
         {
-            // Simplified: In real implementation, use FFmpeg to capture a single frame
-            // For demo, return dummy data or implement actual capture
             _logger.LogInformation($"Capturing frame from {rtspUrl}");
-            // Placeholder: return empty byte array
-            return Array.Empty<byte>();
+            try
+            {
+                using var capture = new VideoCapture(rtspUrl);
+                if (!capture.IsOpened)
+                {
+                    _logger.LogWarning($"Failed to open stream {rtspUrl}");
+                    return Array.Empty<byte>();
+                }
+
+                using var frame = new Mat();
+                if (capture.Read(frame) && !frame.IsEmpty)
+                {
+                    var jpgData = frame.ToImage<Bgr, byte>().ToJpegData();
+                    return jpgData;
+                }
+                else
+                {
+                    _logger.LogWarning($"Failed to read frame from {rtspUrl}");
+                    return Array.Empty<byte>();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error capturing frame from {rtspUrl}");
+                return Array.Empty<byte>();
+            }
         }
     }
 }

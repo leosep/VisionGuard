@@ -20,59 +20,22 @@
                     <form asp-action="Create">
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Name" class="form-label"><i class="fas fa-tag"></i> Name</label>
-                                <input asp-for="Name" class="form-control" placeholder="Enter camera name" />
-                                <span asp-validation-for="Name" class="text-danger"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="IpAddress" class="form-label"><i class="fas fa-globe"></i> IP Address</label>
-                                <input asp-for="IpAddress" class="form-control" placeholder="192.168.1.100" />
-                                <span asp-validation-for="IpAddress" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Port" class="form-label"><i class="fas fa-plug"></i> Port</label>
-                                <input asp-for="Port" class="form-control" placeholder="554" type="number" />
-                                <span asp-validation-for="Port" class="text-danger"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Protocol" class="form-label"><i class="fas fa-network-wired"></i> Protocol</label>
-                                <select asp-for="Protocol" class="form-select">
-                                    <option value="RTSP">RTSP</option>
-                                    <option value="HTTP">HTTP</option>
-                                    <option value="ONVIF">ONVIF</option>
-                                </select>
-                                <span asp-validation-for="Protocol" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Username" class="form-label"><i class="fas fa-user"></i> Username</label>
-                                <input asp-for="Username" class="form-control" placeholder="Username" />
-                                <span asp-validation-for="Username" class="text-danger"></span>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Password" class="form-label"><i class="fas fa-lock"></i> Password</label>
-                                <input asp-for="Password" class="form-control" type="password" placeholder="Password" />
-                                <span asp-validation-for="Password" class="text-danger"></span>
-                            </div>
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label"><i class="fas fa-tag"></i> Name</label>
+                            <input asp-for="Name" class="form-control" placeholder="Enter camera name" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
                         </div>
 
                         <div class="mb-3">
-                            <label asp-for="StreamType" class="form-label"><i class="fas fa-stream"></i> Stream Type</label>
-                            <input asp-for="StreamType" class="form-control" placeholder="e.g., H.264" />
-                            <span asp-validation-for="StreamType" class="text-danger"></span>
+                            <label asp-for="Location" class="form-label"><i class="fas fa-map-marker-alt"></i> Location</label>
+                            <input asp-for="Location" class="form-control" placeholder="Enter camera location" />
+                            <span asp-validation-for="Location" class="text-danger"></span>
                         </div>
+
                         <div class="mb-3">
-                            <label asp-for="StreamUrl" class="form-label"><i class="fas fa-link"></i> Full Stream URL (Optional)</label>
+                            <label asp-for="StreamUrl" class="form-label"><i class="fas fa-link"></i> Full Stream URL</label>
                             <input asp-for="StreamUrl" class="form-control" placeholder="e.g., rtsp://170.93.143.139/rtplive/470011e600ef003a004ee33696235daa" />
                             <span asp-validation-for="StreamUrl" class="text-danger"></span>
-                            <div class="form-text">If provided, this will be used instead of separate IP/Port fields.</div>
                         </div>
 
                         <div class="d-grid">

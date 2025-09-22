@@ -36,14 +36,6 @@ namespace AnyCam.Controllers
         public async Task<IActionResult> Index()
         {
             var cameras = await _context.Cameras.ToListAsync();
-            // Update online status for all cameras
-            foreach (var camera in cameras)
-            {
-                camera.IsOnline = await _cameraService.CheckOnlineAsync(camera);
-                camera.LastChecked = DateTime.UtcNow;
-            }
-            _context.UpdateRange(cameras);
-            await _context.SaveChangesAsync();
             return View(cameras);
         }
 
@@ -79,14 +71,6 @@ namespace AnyCam.Controllers
                 return NotFound();
             }
 
-            _logger.LogInformation($"Camera StreamUrl: {camera.StreamUrl}");
-
-            // If RTSP, set stream URL
-            if (!string.IsNullOrEmpty(camera.StreamUrl))
-            {
-                ViewBag.StreamUrl = $"/Cameras/Stream/{id}";
-            }
-
             return View(camera);
         }
 
@@ -94,7 +78,8 @@ namespace AnyCam.Controllers
         public async Task<IActionResult> Wall()
         {
             var cameras = await _context.Cameras.ToListAsync();
-            return View(cameras);
+            var model = new WallViewModel { Cameras = cameras };
+            return View(model);
         }
 
         // POST: Cameras/StopStreaming/5
@@ -165,6 +150,78 @@ namespace AnyCam.Controllers
             return Ok();
         }
 
+        // API endpoints for wall
+        [HttpPost("api/v1/VideoStreaming/start/{cameraId}")]
+        public IActionResult StartStream(int cameraId)
+        {
+            // Assuming streaming service handles starting
+            // For now, just return ok
+            return Ok();
+        }
+
+        [HttpPost("api/v1/VideoStreaming/stop/{cameraId}")]
+        public IActionResult StopStream(int cameraId)
+        {
+            _streamingService.StopStream(cameraId);
+            return Ok();
+        }
+
+        [HttpGet("api/v1/VideoStreaming/frame/{cameraId}")]
+        public async Task<IActionResult> GetFrame(int cameraId)
+        {
+            var camera = await _context.Cameras.FindAsync(cameraId);
+            if (camera == null || string.IsNullOrEmpty(camera.StreamUrl))
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                using var capture = new VideoCapture(camera.StreamUrl);
+                if (!capture.IsOpened)
+                {
+                    return BadRequest("Cannot open stream");
+                }
+
+                using var frame = new Mat();
+                if (capture.Read(frame) && !frame.IsEmpty)
+                {
+                    var jpgFrame = frame.ToImage<Bgr, byte>().ToJpegData();
+                    return File(jpgFrame, "image/jpeg");
+                }
+                else
+                {
+                    return StatusCode(500, "No frame available");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting frame");
+                return StatusCode(500, "Frame error");
+            }
+        }
+
+        [HttpGet("api/v1/Cameras/{cameraId}/stats")]
+        public async Task<IActionResult> GetStats(int cameraId)
+        {
+            var camera = await _context.Cameras.FindAsync(cameraId);
+            if (camera == null)
+            {
+                return NotFound();
+            }
+
+            // Count AI events for this camera (via video clips)
+            var detectionCount = await _context.AiEvents
+                .Where(e => e.VideoClip.CameraId == cameraId)
+                .CountAsync();
+
+            var alertCount = await _context.AiEvents
+                .Where(e => e.VideoClip.CameraId == cameraId && e.AlertSent)
+                .CountAsync();
+
+            return Json(new { detectionCount, alertCount });
+        }
+
         // GET: Cameras/Create
         public IActionResult Create()
         {
@@ -174,36 +231,10 @@ namespace AnyCam.Controllers
         // POST: Cameras/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,IpAddress,Port,Username,Password,StreamType,Protocol,StreamUrl,IsOnline,LastChecked")] Camera camera)
+        public async Task<IActionResult> Create([Bind("Id,Name,Location,StreamUrl")] Camera camera)
         {
-            _logger.LogInformation($"Creating camera with StreamUrl: {camera.StreamUrl}");
-            if (!string.IsNullOrEmpty(camera.StreamUrl))
-            {
-                // Parse the URL to extract IP, Port, Protocol
-                try
-                {
-                    var uri = new Uri(camera.StreamUrl);
-                    camera.IpAddress = uri.Host;
-                    camera.Port = uri.Port;
-                    camera.Protocol = uri.Scheme.ToUpper();
-                }
-                catch
-                {
-                    ModelState.AddModelError("StreamUrl", "Invalid URL format.");
-                }
-            }
-
             if (ModelState.IsValid)
             {
-                // Auto-detect protocol if not set
-                if (string.IsNullOrEmpty(camera.Protocol))
-                {
-                    camera.Protocol = await _cameraService.DetectProtocolAsync(camera.IpAddress, camera.Port);
-                }
-                // Check online status
-                camera.IsOnline = await _cameraService.CheckOnlineAsync(camera);
-                camera.LastChecked = DateTime.UtcNow;
-
                 _context.Add(camera);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
@@ -222,12 +253,6 @@ namespace AnyCam.Controllers
                 return NotFound();
             }
 
-            if (!camera.StreamUrl?.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                TempData["Error"] = "Recording only supported for RTSP streams.";
-                return RedirectToAction(nameof(View), new { id });
-            }
-
             var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "videos");
             Directory.CreateDirectory(outputPath);
             var fileName = $"{camera.Id}_{DateTime.UtcNow:yyyyMMddHHmmss}.mp4";
@@ -239,6 +264,8 @@ namespace AnyCam.Controllers
                 TempData["Error"] = "Recording already exists.";
                 return RedirectToAction(nameof(View), new { id });
             }
+
+            var startTime = DateTime.UtcNow;
 
             // Start EmguCV recording with timeout
             using var capture = new VideoCapture(camera.StreamUrl);
@@ -261,7 +288,6 @@ namespace AnyCam.Controllers
                 return RedirectToAction(nameof(View), new { id });
             }
 
-            var startTime = DateTime.UtcNow;
             int maxDuration = Math.Min(durationMinutes, 10) * 60; // seconds
 
             while ((DateTime.UtcNow - startTime).TotalSeconds < maxDuration)
@@ -284,8 +310,8 @@ namespace AnyCam.Controllers
             var videoClip = new VideoClip
             {
                 CameraId = camera.Id,
-                StartTime = DateTime.UtcNow,
-                EndTime = DateTime.UtcNow.AddMinutes(durationMinutes),
+                StartTime = startTime,
+                EndTime = startTime.AddMinutes(durationMinutes),
                 FilePath = $"/videos/{fileName}",
                 StorageType = "Local",
                 FileSize = new FileInfo(filePath).Length
@@ -318,7 +344,7 @@ namespace AnyCam.Controllers
         // POST: Cameras/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,IpAddress,Port,Username,Password,StreamType,Protocol,StreamUrl,IsOnline,LastChecked")] Camera camera)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Location,StreamUrl")] Camera camera)
         {
             if (id != camera.Id)
             {

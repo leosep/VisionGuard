@@ -20,9 +20,8 @@
                     <thead class="table-dark">
                         <tr>
                             <th><i class="fas fa-tag"></i> Name</th>
-                            <th><i class="fas fa-globe"></i> IP Address</th>
-                            <th><i class="fas fa-plug"></i> Port</th>
-                            <th><i class="fas fa-network-wired"></i> Protocol</th>
+                            <th><i class="fas fa-map-marker-alt"></i> Location</th>
+                            <th><i class="fas fa-link"></i> Stream URL</th>
                             <th><i class="fas fa-signal"></i> Status</th>
                             <th><i class="fas fa-cogs"></i> Actions</th>
                         </tr>
@@ -31,9 +30,8 @@
                     @foreach (var item in Model) {
                         <tr>
                             <td>@Html.DisplayFor(modelItem => item.Name)</td>
-                            <td>@Html.DisplayFor(modelItem => item.IpAddress)</td>
-                            <td>@Html.DisplayFor(modelItem => item.Port)</td>
-                            <td><span class="badge bg-secondary">@Html.DisplayFor(modelItem => item.Protocol)</span></td>
+                            <td>@Html.DisplayFor(modelItem => item.Location)</td>
+                            <td>@Html.DisplayFor(modelItem => item.StreamUrl)</td>
                             <td>
                                 @if (item.IsOnline)
                                 {

@@ -49,7 +49,7 @@ namespace AnyCam.Controllers
         // GET: AiEvents/Create
         public IActionResult Create()
         {
-            ViewData["VideoClipId"] = new SelectList(_context.VideoClips, "Id", "Id");
+            ViewData["VideoClipId"] = new SelectList(_context.VideoClips.Include(v => v.Camera), "Id", "Camera.Name");
             return View();
         }
 

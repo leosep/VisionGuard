@@ -19,41 +19,11 @@
                 <dt class="col-sm-3"><i class="fas fa-tag"></i> Name</dt>
                 <dd class="col-sm-9">@Html.DisplayFor(model => model.Name)</dd>
 
-                <dt class="col-sm-3"><i class="fas fa-globe"></i> IP Address</dt>
-                <dd class="col-sm-9">@Html.DisplayFor(model => model.IpAddress)</dd>
-
-                <dt class="col-sm-3"><i class="fas fa-plug"></i> Port</dt>
-                <dd class="col-sm-9">@Html.DisplayFor(model => model.Port)</dd>
-
-                <dt class="col-sm-3"><i class="fas fa-user"></i> Username</dt>
-                <dd class="col-sm-9">@Html.DisplayFor(model => model.Username)</dd>
-
-                <dt class="col-sm-3"><i class="fas fa-lock"></i> Password</dt>
-                <dd class="col-sm-9">***</dd>
-
-                <dt class="col-sm-3"><i class="fas fa-stream"></i> Stream Type</dt>
-                <dd class="col-sm-9">@Html.DisplayFor(model => model.StreamType)</dd>
-
-                <dt class="col-sm-3"><i class="fas fa-network-wired"></i> Protocol</dt>
-                <dd class="col-sm-9"><span class="badge bg-secondary">@Html.DisplayFor(model => model.Protocol)</span></dd>
+                <dt class="col-sm-3"><i class="fas fa-map-marker-alt"></i> Location</dt>
+                <dd class="col-sm-9">@Html.DisplayFor(model => model.Location)</dd>
 
                 <dt class="col-sm-3"><i class="fas fa-link"></i> Stream URL</dt>
                 <dd class="col-sm-9">@Html.DisplayFor(model => model.StreamUrl)</dd>
-
-                <dt class="col-sm-3"><i class="fas fa-signal"></i> Status</dt>
-                <dd class="col-sm-9">
-                    @if (Model.IsOnline)
-                    {
-                        <span class="badge bg-success"><i class="fas fa-circle"></i> Online</span>
-                    }
-                    else
-                    {
-                        <span class="badge bg-danger"><i class="fas fa-circle"></i> Offline</span>
-                    }
-                </dd>
-
-                <dt class="col-sm-3"><i class="fas fa-clock"></i> Last Checked</dt>
-                <dd class="col-sm-9">@Model.LastChecked.ToString("g")</dd>
             </dl>
         </div>
         <div class="card-footer">

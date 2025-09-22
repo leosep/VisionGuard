@@ -6,10 +6,9 @@ namespace AnyCam.Models
     {
         public int Id { get; set; }
 
-        [Required]
-        public int VideoClipId { get; set; }
+        public int? VideoClipId { get; set; }
 
-        public VideoClip VideoClip { get; set; }
+        public VideoClip? VideoClip { get; set; }
 
         [Required]
         public string EventType { get; set; } // e.g., "Motion", "Person Detected", "Anomaly"
