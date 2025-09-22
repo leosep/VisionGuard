@@ -8,13 +8,11 @@
 
 <div class="row">
     <div class="col-md-12">
-        <video id="cameraStream" controls autoplay muted style="width: 100%; max-height: 600px;"
-               data-stream-url="@ViewBag.HlsUrl"
-               data-ip="@Model.IpAddress"
-               data-port="@Model.Port"
-               data-stream-url-full="@Model.StreamUrl">
-            Your browser does not support the video tag.
-        </video>
+        <img id="cameraStream" style="width: 100%; max-height: 600px;"
+             data-stream-url="@ViewBag.StreamUrl"
+             data-ip="@Model.IpAddress"
+             data-port="@Model.Port"
+             data-stream-url-full="@Model.StreamUrl">
     </div>
 </div>
 
@@ -29,54 +27,23 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-    const video = document.getElementById('cameraStream');
-    const playBtn = document.getElementById('playBtn');
-    const pauseBtn = document.getElementById('pauseBtn');
+    const img = document.getElementById('cameraStream');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
 
     function loadStream() {
-        const video = document.getElementById('cameraStream');
-        const hlsUrl = video.dataset.streamUrl;
-        const ip = video.dataset.ip;
-        const port = video.dataset.port;
-        const fullUrl = video.dataset.streamUrlFull;
-
-        const streamUrl = hlsUrl || fullUrl || `http://${ip}:${port}/stream`;
-
-        if (streamUrl.endsWith('.m3u8')) {
-            // HLS stream
-            if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(streamUrl);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
-                });
-                hls.on(Hls.Events.ERROR, function(event, data) {
-                    console.error('HLS error:', data);
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = streamUrl;
-            }
-        } else if (streamUrl.startsWith('rtsp://')) {
-            // Can't play RTSP directly
-            console.warn('RTSP stream cannot be played directly in browser');
-        } else {
-            // Direct stream
-            video.src = streamUrl;
+        const streamUrl = img.dataset.streamUrl;
+        if (streamUrl) {
+            img.src = streamUrl;
         }
     }
 
-    // Start loading with delay
-    setTimeout(loadStream, 15000);
+    // Start loading immediately
+    loadStream();
 
-    playBtn.addEventListener('click', () => video.play());
-    pauseBtn.addEventListener('click', () => video.pause());
     fullscreenBtn.addEventListener('click', () => {
-        if (video.requestFullscreen) {
-            video.requestFullscreen();
+        if (img.requestFullscreen) {
+            img.requestFullscreen();
         }
     });
 

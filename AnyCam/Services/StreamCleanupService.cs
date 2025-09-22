@@ -23,23 +23,8 @@ namespace AnyCam.Services
                 using (var scope = _serviceProvider.CreateScope())
                 {
                     var streamingService = scope.ServiceProvider.GetRequiredService<StreamingService>();
-                    var now = DateTime.UtcNow;
-                    var timeout = TimeSpan.FromMinutes(5);
-                    var toStop = new List<int>();
-
-                    foreach (var kvp in streamingService.GetRunningStreams())
-                    {
-                        if (now - kvp.Value.LastAccessed > timeout)
-                        {
-                            toStop.Add(kvp.Key);
-                        }
-                    }
-
-                    foreach (var id in toStop)
-                    {
-                        streamingService.StopHlsStream(id);
-                        _logger.LogInformation($"Stopped inactive stream for camera {id}");
-                    }
+                    var runningIds = streamingService.GetRunningStreamIds();
+                    _logger.LogInformation($"Running streams: {string.Join(", ", runningIds)}");
                 }
             }
         }

@@ -67,21 +67,6 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
-// Middleware to track stream access
-app.Use(async (context, next) =>
-{
-    if (context.Request.Path.StartsWithSegments("/streams"))
-    {
-        var path = context.Request.Path.Value;
-        var parts = path.Split('/');
-        if (parts.Length >= 3 && int.TryParse(parts[2], out int cameraId))
-        {
-            var streamingService = context.RequestServices.GetRequiredService<StreamingService>();
-            streamingService.UpdateLastAccessed(cameraId);
-        }
-    }
-    await next();
-});
 
 app.UseRouting();
 

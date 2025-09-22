@@ -1,86 +1,74 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using Emgu.CV;
+using System.Drawing;
+using Emgu.CV.Structure;
 
 namespace AnyCam.Services
 {
     public class StreamingService
     {
         private readonly ILogger<StreamingService> _logger;
-        private readonly ConcurrentDictionary<int, (Process Process, DateTime LastAccessed)> _runningStreams = new();
+        private readonly ConcurrentDictionary<int, VideoCapture> _runningStreams = new();
 
         public StreamingService(ILogger<StreamingService> logger)
         {
             _logger = logger;
         }
 
-        public Process StartHlsStream(string rtspUrl, string outputPath, int cameraId)
+        public void StartStream(string rtspUrl, int cameraId)
         {
-            _logger.LogInformation($"Starting HLS stream for {rtspUrl} to {outputPath}");
-            _logger.LogInformation($"Current directory: {Directory.GetCurrentDirectory()}");
-            _logger.LogInformation($"Output path exists: {Directory.Exists(outputPath)}");
+            _logger.LogInformation($"Starting stream for {rtspUrl}");
 
-            // FFmpeg command to convert RTSP to HLS with limited segments
-            var segmentPattern = Path.Combine(outputPath, "segment_%03d.ts");
-            var playlistPath = Path.Combine(outputPath, "playlist.m3u8");
-
-            var process = new Process
+            try
             {
-                StartInfo = new ProcessStartInfo
+                var capture = new VideoCapture(rtspUrl);
+                if (capture.IsOpened)
                 {
-                    FileName = "ffmpeg",
-                    Arguments = $"-rtsp_transport tcp -i \"{rtspUrl}\" -c:v libx264 -c:a aac -f hls -hls_time 5 -hls_list_size 50 -hls_flags delete_segments -hls_segment_filename \"{segmentPattern}\" \"{playlistPath}\"",
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
+                    _runningStreams[cameraId] = capture;
+                    _logger.LogInformation($"Started stream for camera {cameraId}");
                 }
-            };
-
-            // Log the command
-            _logger.LogInformation($"FFmpeg command: ffmpeg {process.StartInfo.Arguments}");
-
-            process.ErrorDataReceived += (sender, e) =>
+                else
+                {
+                    _logger.LogError($"Failed to open stream {rtspUrl}");
+                }
+            }
+            catch (AccessViolationException ex)
             {
-                if (!string.IsNullOrEmpty(e.Data))
-                {
-                    _logger.LogInformation("FFmpeg stderr: {Data}", e.Data);
-                }
-            };
-
-            process.Start();
-            process.BeginErrorReadLine();
-
-            // Store the process
-            _runningStreams[cameraId] = (process, DateTime.UtcNow);
-            _logger.LogInformation($"Started HLS stream for camera {cameraId}");
-
-            return process;
-        }
-
-        public void StopHlsStream(int cameraId)
-        {
-            if (_runningStreams.TryRemove(cameraId, out var streamInfo))
+                _logger.LogError(ex, $"Access violation starting stream for {rtspUrl}");
+            }
+            catch (Exception ex)
             {
-                try
-                {
-                    if (!streamInfo.Process.HasExited)
-                    {
-                        streamInfo.Process.Kill();
-                        _logger.LogInformation($"Stopped HLS stream for camera {cameraId}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, $"Error stopping HLS stream for camera {cameraId}");
-                }
+                _logger.LogError(ex, $"Exception starting stream for {rtspUrl}");
             }
         }
 
-        public void UpdateLastAccessed(int cameraId)
+        public Mat? GetFrame(int cameraId)
         {
-            if (_runningStreams.TryGetValue(cameraId, out var streamInfo))
+            if (_runningStreams.TryGetValue(cameraId, out var capture))
             {
-                _runningStreams[cameraId] = (streamInfo.Process, DateTime.UtcNow);
+                var frame = new Mat();
+                if (capture.Read(frame) && !frame.IsEmpty)
+                {
+                    return frame;
+                }
+            }
+            return null;
+        }
+
+        public void StopStream(int cameraId)
+        {
+            if (_runningStreams.TryRemove(cameraId, out var capture))
+            {
+                try
+                {
+                    capture.Dispose();
+                    _logger.LogInformation($"Stopped stream for camera {cameraId}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, $"Error stopping stream for camera {cameraId}");
+                }
             }
         }
 
@@ -89,16 +77,17 @@ namespace AnyCam.Services
             return _runningStreams.Keys;
         }
 
-        public IEnumerable<KeyValuePair<int, (Process Process, DateTime LastAccessed)>> GetRunningStreams()
+        public IEnumerable<KeyValuePair<int, VideoCapture>> GetRunningStreams()
         {
             return _runningStreams;
         }
 
         public void StopAllStreams()
         {
-            foreach (var cameraId in _runningStreams.Keys)
+            var ids = _runningStreams.Keys.ToList();
+            foreach (var cameraId in ids)
             {
-                StopHlsStream(cameraId);
+                StopStream(cameraId);
             }
         }
     }

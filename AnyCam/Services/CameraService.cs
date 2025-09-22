@@ -2,6 +2,7 @@ using AnyCam.Models;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Net;
+using Emgu.CV;
 
 namespace AnyCam.Services
 {
@@ -42,28 +43,33 @@ namespace AnyCam.Services
         {
             try
             {
-                if (!string.IsNullOrEmpty(camera.StreamUrl) && camera.StreamUrl.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase))
+                if (!string.IsNullOrEmpty(camera.StreamUrl))
                 {
-                    // For RTSP, send OPTIONS request
-                    var uri = new Uri(camera.StreamUrl);
-                    var host = uri.Host;
-                    var port = uri.Port;
+                    // Use EmguCV to check if stream is accessible
+                    Console.WriteLine($"Checking stream online for {camera.Name}: {camera.StreamUrl}");
+                    using var capture = new VideoCapture(camera.StreamUrl);
+                    if (!capture.IsOpened)
+                    {
+                        return false;
+                    }
 
-                    Console.WriteLine($"Checking RTSP online for {camera.Name}: {host}:{port}");
-                    return await CheckRtspOnlineAsync(host, port, camera.StreamUrl);
+                    using var frame = new Mat();
+                    // Try to read a frame within 10 seconds
+                    var task = Task.Run(() => capture.Read(frame));
+                    if (await Task.WhenAny(task, Task.Delay(10000)) == task)
+                    {
+                        return !frame.IsEmpty;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
                 else
                 {
                     // Fallback to TCP check
                     string host = camera.IpAddress;
                     int port = camera.Port;
-
-                    if (!string.IsNullOrEmpty(camera.StreamUrl))
-                    {
-                        var uri = new Uri(camera.StreamUrl);
-                        host = uri.Host;
-                        port = uri.Port;
-                    }
 
                     Console.WriteLine($"Checking TCP online for {camera.Name}: {host}:{port}");
                     var result = await IsPortOpenAsync(host, port);
@@ -78,39 +84,5 @@ namespace AnyCam.Services
             }
         }
 
-        private async Task<bool> CheckRtspOnlineAsync(string host, int port, string url)
-        {
-            try
-            {
-                // Use ffmpeg to check if RTSP stream is accessible
-                var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "ffmpeg",
-                        Arguments = $"-rtsp_transport tcp -i \"{url}\" -t 5 -f null -",
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        CreateNoWindow = true
-                    }
-                };
-
-                process.Start();
-                bool exited = process.WaitForExit(10000); // 10 second timeout
-
-                if (!exited)
-                {
-                    process.Kill();
-                    return false;
-                }
-
-                return process.ExitCode == 0;
-            }
-            catch
-            {
-                return false;
-            }
-        }
     }
 }

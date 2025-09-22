@@ -10,6 +10,9 @@ using Microsoft.EntityFrameworkCore;
 using AnyCam.Models;
 using Microsoft.AspNetCore.Authorization;
 using AnyCam.Services;
+using Emgu.CV;
+using Emgu.CV.Structure;
+using System.Drawing;
 
 namespace AnyCam.Controllers
 {
@@ -78,25 +81,10 @@ namespace AnyCam.Controllers
 
             _logger.LogInformation($"Camera StreamUrl: {camera.StreamUrl}");
 
-            // If RTSP, start HLS streaming
-            if (camera.StreamUrl?.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase) == true)
+            // If RTSP, set stream URL
+            if (!string.IsNullOrEmpty(camera.StreamUrl))
             {
-                var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "streams", id.ToString());
-                Directory.CreateDirectory(outputPath);
-                _streamingService.StartHlsStream(camera.StreamUrl, outputPath, camera.Id);
-                ViewBag.HlsUrl = $"/streams/{id}/playlist.m3u8";
-                // Wait longer for FFmpeg to start and create playlist
-                await Task.Delay(15000);
-                var playlistPath = Path.Combine(outputPath, "playlist.m3u8");
-                if (System.IO.File.Exists(playlistPath))
-                {
-                    Console.WriteLine("Playlist created successfully");
-                }
-                else
-                {
-                    Console.WriteLine("Playlist not found");
-                    TempData["Error"] = "Failed to start stream. Camera may be offline.";
-                }
+                ViewBag.StreamUrl = $"/Cameras/Stream/{id}";
             }
 
             return View(camera);
@@ -106,15 +94,6 @@ namespace AnyCam.Controllers
         public async Task<IActionResult> Wall()
         {
             var cameras = await _context.Cameras.ToListAsync();
-            // Start HLS for RTSP cameras
-            foreach (var camera in cameras.Where(c => c.StreamUrl?.StartsWith("rtsp://", StringComparison.OrdinalIgnoreCase) == true))
-            {
-                var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "streams", camera.Id.ToString());
-                Directory.CreateDirectory(outputPath);
-                _streamingService.StartHlsStream(camera.StreamUrl, outputPath, camera.Id);
-            }
-            // Wait for streams to start
-            await Task.Delay(10000);
             return View(cameras);
         }
 
@@ -122,8 +101,60 @@ namespace AnyCam.Controllers
         [HttpPost]
         public IActionResult StopStreaming(int id)
         {
-            _streamingService.StopHlsStream(id);
+            _streamingService.StopStream(id);
             return Ok();
+        }
+
+        // GET: Cameras/Stream/5
+        public async Task<IActionResult> Stream(int id)
+        {
+            var camera = await _context.Cameras.FindAsync(id);
+            if (camera == null || string.IsNullOrEmpty(camera.StreamUrl))
+            {
+                return NotFound();
+            }
+
+            var response = Response;
+            response.ContentType = "multipart/x-mixed-replace; boundary=frame";
+
+            try
+            {
+                using var capture = new VideoCapture(camera.StreamUrl);
+                if (!capture.IsOpened)
+                {
+                    return BadRequest("Cannot open stream");
+                }
+
+                await using var writer = new StreamWriter(response.Body);
+
+                while (!HttpContext.RequestAborted.IsCancellationRequested)
+                {
+                    using var frame = new Mat();
+                    if (capture.Read(frame) && !frame.IsEmpty)
+                    {
+                        var jpgFrame = frame.ToImage<Bgr, byte>().ToJpegData();
+                        await writer.WriteLineAsync("--frame");
+                        await writer.WriteLineAsync("Content-Type: image/jpeg");
+                        await writer.WriteLineAsync($"Content-Length: {jpgFrame.Length}");
+                        await writer.WriteLineAsync();
+                        await writer.FlushAsync();
+                        await response.Body.WriteAsync(jpgFrame);
+                        await writer.WriteLineAsync();
+                        await writer.FlushAsync();
+                    }
+                    else
+                    {
+                        await Task.Delay(100); // wait a bit if no frame
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in stream");
+                return StatusCode(500, "Stream error");
+            }
+
+            return new EmptyResult();
         }
 
         // POST: Cameras/StopAllStreams
@@ -209,51 +240,61 @@ namespace AnyCam.Controllers
                 return RedirectToAction(nameof(View), new { id });
             }
 
-            // Start FFmpeg recording with timeout
-            var process = new Process
+            // Start EmguCV recording with timeout
+            using var capture = new VideoCapture(camera.StreamUrl);
+            if (!capture.IsOpened)
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "ffmpeg",
-                    Arguments = $"-i \"{camera.StreamUrl}\" -t {Math.Min(durationMinutes, 10) * 60} -fs 100M \"{filePath}\"", // Limit to 10 min, 100MB
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-
-            process.Start();
-            bool exited = process.WaitForExit(600000); // 10 min timeout
-            if (!exited)
-            {
-                process.Kill();
-                TempData["Error"] = "Recording timed out.";
+                TempData["Error"] = "Failed to open camera stream.";
                 return RedirectToAction(nameof(View), new { id });
             }
 
-            if (process.ExitCode == 0)
+            double fps = capture.Get(Emgu.CV.CvEnum.CapProp.Fps);
+            if (fps <= 0) fps = 30;
+
+            int width = (int)capture.Get(Emgu.CV.CvEnum.CapProp.FrameWidth);
+            int height = (int)capture.Get(Emgu.CV.CvEnum.CapProp.FrameHeight);
+
+            using var writer = new VideoWriter(filePath, VideoWriter.Fourcc('H', '2', '6', '4'), fps, new Size(width, height), true);
+            if (!writer.IsOpened)
             {
-                // Create VideoClip
-                var videoClip = new VideoClip
+                TempData["Error"] = "Failed to create video writer.";
+                return RedirectToAction(nameof(View), new { id });
+            }
+
+            var startTime = DateTime.UtcNow;
+            int maxDuration = Math.Min(durationMinutes, 10) * 60; // seconds
+
+            while ((DateTime.UtcNow - startTime).TotalSeconds < maxDuration)
+            {
+                using var frame = new Mat();
+                if (capture.Read(frame) && !frame.IsEmpty)
                 {
-                    CameraId = camera.Id,
-                    StartTime = DateTime.UtcNow,
-                    EndTime = DateTime.UtcNow.AddMinutes(durationMinutes),
-                    FilePath = $"/videos/{fileName}",
-                    StorageType = "Local",
-                    FileSize = new FileInfo(filePath).Length
-                };
-
-                _context.VideoClips.Add(videoClip);
-                await _context.SaveChangesAsync();
-
-                TempData["Success"] = $"Recording completed. Clip saved: {fileName}";
+                    writer.Write(frame);
+                }
+                else
+                {
+                    TempData["Error"] = "Failed to read frames.";
+                    return RedirectToAction(nameof(View), new { id });
+                }
             }
-            else
+
+            writer.Dispose();
+
+            // Create VideoClip
+            var videoClip = new VideoClip
             {
-                TempData["Error"] = "Recording failed.";
-            }
+                CameraId = camera.Id,
+                StartTime = DateTime.UtcNow,
+                EndTime = DateTime.UtcNow.AddMinutes(durationMinutes),
+                FilePath = $"/videos/{fileName}",
+                StorageType = "Local",
+                FileSize = new FileInfo(filePath).Length
+            };
+
+            _context.VideoClips.Add(videoClip);
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = $"Recording completed. Clip saved: {fileName}";
 
             return RedirectToAction(nameof(View), new { id });
         }

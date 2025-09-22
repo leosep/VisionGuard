@@ -16,45 +16,22 @@
                         @camera.Name
                     </div>
                     <div class="card-body">
-                        <video id="video-@camera.Id" class="w-100" autoplay muted
-                               data-id="@camera.Id"
-                               data-stream-url="@camera.StreamUrl"
-                               data-ip="@camera.IpAddress"
-                               data-port="@camera.Port">
-                            Your browser does not support the video tag.
-                        </video>
+                        <img id="img-@camera.Id" class="w-100"
+                             data-id="@camera.Id"
+                             data-stream-url="/Cameras/Stream/@camera.Id"
+                             data-ip="@camera.IpAddress"
+                             data-port="@camera.Port">
                     </div>
                 </div>
             </div>
         }
     </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
-    document.querySelectorAll('video[id^="video-"]').forEach(video => {
-        const id = video.dataset.id;
-        const streamUrlFull = video.dataset.streamUrl;
-        const ip = video.dataset.ip;
-        const port = video.dataset.port;
-
-        const streamUrl = (streamUrlFull && streamUrlFull.startsWith('rtsp://')) ? `/streams/${id}/playlist.m3u8` : (streamUrlFull || `http://${ip}:${port}/stream`);
-
-        if (streamUrl.endsWith('.m3u8')) {
-            if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(streamUrl);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.ERROR, function(event, data) {
-                    console.error('HLS error for camera ' + id + ':', data);
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = streamUrl;
-            }
-        } else if (streamUrl.startsWith('rtsp://')) {
-            // Can't play RTSP directly
-            console.warn('RTSP stream cannot be played directly in browser for camera ' + id);
-        } else {
-            video.src = streamUrl;
+    document.querySelectorAll('img[id^="img-"]').forEach(img => {
+        const streamUrl = img.dataset.streamUrl;
+        if (streamUrl) {
+            img.src = streamUrl;
         }
     });
 
