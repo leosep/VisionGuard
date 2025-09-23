@@ -173,6 +173,57 @@
                 </div>
             </div>
         }
+
+        <!-- AI Findings Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-brain"></i> Recent AI Findings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        @if (Model.RecentAiEvents.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var aiEvent in Model.RecentAiEvents)
+                                {
+                                    <div class="list-group-item">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <h6 class="mb-1">@aiEvent.EventType</h6>
+                                            <small>@aiEvent.Timestamp.ToString("g")</small>
+                                        </div>
+                                        <p class="mb-1">@aiEvent.Description</p>
+                                        @if (!string.IsNullOrEmpty(aiEvent.DetectedObjects))
+                                        {
+                                            <small class="text-muted">Detected: @aiEvent.DetectedObjects</small>
+                                        }
+                                        @if (aiEvent.Camera != null)
+                                        {
+                                            <small class="text-muted d-block">Camera: @aiEvent.Camera.Name</small>
+                                        }
+                                        @if (aiEvent.AlertSent)
+                                        {
+                                            <span class="badge bg-warning">Alert Sent</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-muted text-center">No AI events detected yet.</p>
+                        }
+                    </div>
+                    <div class="card-footer text-center">
+                        <a asp-controller="AiEvents" asp-action="Index" class="btn btn-primary btn-sm">
+                            <i class="fas fa-list"></i> View All AI Events
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
 </div>
 

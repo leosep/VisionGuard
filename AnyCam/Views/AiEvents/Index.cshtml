@@ -1,0 +1,270 @@
+@model IEnumerable<AnyCam.Models.AiEvent>
+
+@{
+    ViewData["Title"] = "AI Events Report";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h2">
+                    <i class="fas fa-brain"></i> AI Detection Reports
+                </h1>
+                <small class="text-muted">Automatically generated AI analysis results</small>
+            </div>
+        </div>
+    </div>
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    @TempData["Error"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Filters and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form asp-action="Index" method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="searchString" class="form-label">Search</label>
+                            <input type="text" class="form-control" id="searchString" name="searchString"
+                                   value="@ViewData["CurrentFilter"]" placeholder="Search description, type, objects..." />
+                        </div>
+                        <div class="col-md-2">
+                            <label for="eventType" class="form-label">Event Type</label>
+                            <select class="form-select" id="eventType" name="eventType">
+                                <option value="">All Types</option>
+                                @foreach (var type in (List<string>)ViewData["EventTypes"])
+                                {
+                                    <option value="@type" selected="@(ViewData["EventTypeFilter"]?.ToString() == type)">@type</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="cameraId" class="form-label">Camera</label>
+                            <select class="form-select" id="cameraId" name="cameraId">
+                                <option value="">All Cameras</option>
+                                @foreach (var camera in (List<AnyCam.Models.Camera>)ViewData["Cameras"])
+                                {
+                                    <option value="@camera.Id" selected="@(ViewData["CameraIdFilter"]?.ToString() == camera.Id.ToString())">@camera.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="startDate" class="form-label">From Date</label>
+                            <input type="date" class="form-control" id="startDate" name="startDate"
+                                   value="@ViewData["StartDateFilter"]" />
+                        </div>
+                        <div class="col-md-2">
+                            <label for="endDate" class="form-label">To Date</label>
+                            <input type="date" class="form-control" id="endDate" name="endDate"
+                                   value="@ViewData["EndDateFilter"]" />
+                        </div>
+                        <div class="col-md-1 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i> Filter
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                Showing @Model.Count() AI events
+                @if (!string.IsNullOrEmpty(ViewData["CurrentFilter"]?.ToString()) ||
+                     !string.IsNullOrEmpty(ViewData["EventTypeFilter"]?.ToString()) ||
+                     !string.IsNullOrEmpty(ViewData["CameraIdFilter"]?.ToString()) ||
+                     !string.IsNullOrEmpty(ViewData["StartDateFilter"]?.ToString()) ||
+                     !string.IsNullOrEmpty(ViewData["EndDateFilter"]?.ToString()))
+                {
+                    <text> (filtered)</text>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Events Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>
+                                        <a asp-action="Index"
+                                           asp-route-sortOrder="@(ViewData["CurrentSort"]?.ToString() == "eventtype" ? "eventtype_desc" : "eventtype")"
+                                           asp-route-searchString="@ViewData["CurrentFilter"]"
+                                           asp-route-eventType="@ViewData["EventTypeFilter"]"
+                                           asp-route-cameraId="@ViewData["CameraIdFilter"]"
+                                           asp-route-startDate="@ViewData["StartDateFilter"]"
+                                           asp-route-endDate="@ViewData["EndDateFilter"]"
+                                           class="text-white text-decoration-none">
+                                            Event Type
+                                            @if (ViewData["CurrentSort"]?.ToString() == "eventtype")
+                                            {
+                                                <i class="fas fa-sort-up"></i>
+                                            }
+                                            else if (ViewData["CurrentSort"]?.ToString() == "eventtype_desc")
+                                            {
+                                                <i class="fas fa-sort-down"></i>
+                                            }
+                                        </a>
+                                    </th>
+                                    <th>Description</th>
+                                    <th>
+                                        <a asp-action="Index"
+                                           asp-route-sortOrder="@(ViewData["CurrentSort"]?.ToString() == "timestamp_asc" ? "timestamp_desc" : "timestamp_asc")"
+                                           asp-route-searchString="@ViewData["CurrentFilter"]"
+                                           asp-route-eventType="@ViewData["EventTypeFilter"]"
+                                           asp-route-cameraId="@ViewData["CameraIdFilter"]"
+                                           asp-route-startDate="@ViewData["StartDateFilter"]"
+                                           asp-route-endDate="@ViewData["EndDateFilter"]"
+                                           class="text-white text-decoration-none">
+                                            Timestamp
+                                            @if (ViewData["CurrentSort"]?.ToString() == "timestamp_desc")
+                                            {
+                                                <i class="fas fa-sort-up"></i>
+                                            }
+                                            else if (ViewData["CurrentSort"]?.ToString() == "timestamp_asc")
+                                            {
+                                                <i class="fas fa-sort-down"></i>
+                                            }
+                                        </a>
+                                    </th>
+                                    <th>Detected Objects</th>
+                                    <th>
+                                        <a asp-action="Index"
+                                           asp-route-sortOrder="@(ViewData["CurrentSort"]?.ToString() == "camera" ? "camera_desc" : "camera")"
+                                           asp-route-searchString="@ViewData["CurrentFilter"]"
+                                           asp-route-eventType="@ViewData["EventTypeFilter"]"
+                                           asp-route-cameraId="@ViewData["CameraIdFilter"]"
+                                           asp-route-startDate="@ViewData["StartDateFilter"]"
+                                           asp-route-endDate="@ViewData["EndDateFilter"]"
+                                           class="text-white text-decoration-none">
+                                            Camera
+                                            @if (ViewData["CurrentSort"]?.ToString() == "camera")
+                                            {
+                                                <i class="fas fa-sort-up"></i>
+                                            }
+                                            else if (ViewData["CurrentSort"]?.ToString() == "camera_desc")
+                                            {
+                                                <i class="fas fa-sort-down"></i>
+                                            }
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a asp-action="Index"
+                                           asp-route-sortOrder="@(ViewData["CurrentSort"]?.ToString() == "alertsent" ? "alertsent_desc" : "alertsent")"
+                                           asp-route-searchString="@ViewData["CurrentFilter"]"
+                                           asp-route-eventType="@ViewData["EventTypeFilter"]"
+                                           asp-route-cameraId="@ViewData["CameraIdFilter"]"
+                                           asp-route-startDate="@ViewData["StartDateFilter"]"
+                                           asp-route-endDate="@ViewData["EndDateFilter"]"
+                                           class="text-white text-decoration-none">
+                                            Alert Status
+                                            @if (ViewData["CurrentSort"]?.ToString() == "alertsent")
+                                            {
+                                                <i class="fas fa-sort-up"></i>
+                                            }
+                                            else if (ViewData["CurrentSort"]?.ToString() == "alertsent_desc")
+                                            {
+                                                <i class="fas fa-sort-down"></i>
+                                            }
+                                        </a>
+                                    </th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.Any())
+                                {
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+                                            <p class="text-muted">No AI events found matching your criteria.</p>
+                                        </td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var item in Model)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <span class="badge bg-primary">@item.EventType</span>
+                                            </td>
+                                            <td>
+                                                @item.Description
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">@item.Timestamp.ToString("g")</small>
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(item.DetectedObjects))
+                                                {
+                                                    <small class="text-muted">@item.DetectedObjects</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (item.Camera != null)
+                                                {
+                                                    <i class="fas fa-video-camera text-primary me-1"></i>
+                                                    @item.Camera.Name
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (item.AlertSent)
+                                                {
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-check"></i> Sent
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">
+                                                        <i class="fas fa-clock"></i> Pending
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-eye"></i> View Details
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

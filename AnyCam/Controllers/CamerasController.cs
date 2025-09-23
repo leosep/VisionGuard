@@ -78,7 +78,12 @@ namespace AnyCam.Controllers
         public async Task<IActionResult> Wall()
         {
             var cameras = await _context.Cameras.ToListAsync();
-            var model = new WallViewModel { Cameras = cameras };
+            var recentAiEvents = await _context.AiEvents
+                .Include(e => e.Camera)
+                .OrderByDescending(e => e.Timestamp)
+                .Take(10)
+                .ToListAsync();
+            var model = new WallViewModel { Cameras = cameras, RecentAiEvents = recentAiEvents };
             return View(model);
         }
 
@@ -210,13 +215,13 @@ namespace AnyCam.Controllers
                 return NotFound();
             }
 
-            // Count AI events for this camera (via video clips)
+            // Count AI events for this camera
             var detectionCount = await _context.AiEvents
-                .Where(e => e.VideoClip.CameraId == cameraId)
+                .Where(e => e.CameraId == cameraId)
                 .CountAsync();
 
             var alertCount = await _context.AiEvents
-                .Where(e => e.VideoClip.CameraId == cameraId && e.AlertSent)
+                .Where(e => e.CameraId == cameraId && e.AlertSent)
                 .CountAsync();
 
             return Json(new { detectionCount, alertCount });

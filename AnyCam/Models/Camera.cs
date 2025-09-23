@@ -7,6 +7,7 @@ namespace AnyCam.Models
         public Camera()
         {
             VideoClips = new List<VideoClip>();
+            AiEvents = new List<AiEvent>();
         }
 
         public int Id { get; set; }
@@ -25,5 +26,6 @@ namespace AnyCam.Models
 
         // Navigation
         public ICollection<VideoClip> VideoClips { get; set; }
+        public ICollection<AiEvent> AiEvents { get; set; }
     }
 }
